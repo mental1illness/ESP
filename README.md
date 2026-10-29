@@ -48,3 +48,15 @@ local ESP = {
     },
 }
 ```
+Works on npcs as well!!!
+<center><img width="479" height="221" alt="image" src="https://github.com/user-attachments/assets/8a03df61-180b-4069-ade6-f227bd522f0d" /></center>
+
+```lua
+  for _, Humanoid in workspace:QueryDescendants("Humanoid") do
+      local Character = Humanoid.Parent
+  
+      if Character:IsA("Model") and not Character:IsAncestorOf(Camera) and not Players:GetPlayerFromCharacter(Character) then
+          ESP:Add({ Model = Character })
+      end
+  end
+```
