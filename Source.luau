@@ -28,7 +28,7 @@ local ESP = {
         ColorTop    = Color3.fromRGB(100, 100, 100), -- yes this is gradient slop, shut up.
         ColorBottom = Color3.fromRGB(255, 255, 255),
 
-        Style       = "Full", -- You can pick "Full" or "Dropshadow".
+        Style       = "Dropshadow", -- You can pick "Full" or "Dropshadow".
 
         Filled = { -- Draws a frame inside the bounding box, filling the insides (ay bor wtf is this explanation)
             Enabled      = true,
@@ -52,7 +52,7 @@ local ESP = {
         ColorMiddle  = Color3.fromRGB(255, 255, 0),
         ColorBottom  = Color3.fromRGB(252, 71, 77),
 
-        Style        = "Full", -- You can pick "Full" or "Dropshadow".
+        Style        = "Dropshadow", -- You can pick "Full" or "Dropshadow".
         Thickness    = 2
     },
 
@@ -527,11 +527,19 @@ local ESP = {
 
                 if ESP.HealthBar.Enabled then
                     if ESP.HealthBar.Style == "Full" then
-                        This.Elements.HealthBarOutline.Enabled = true
-                        This.Elements.HealthBarShadow.Visible = false
+                        if This.Elements.HealthBarOutline.Enabled ~= true then This.Elements.HealthBarOutline.Enabled = true end
+                        if This.Elements.HealthBarShadow.Visible ~= false  then This.Elements.HealthBarShadow.Visible = false end
+
+                        if This.Elements.HealthBarHolder.Size.Y.Offset ~= 0 then
+                            This.Elements.HealthBarHolder.Size = UDim2.new(0, ESP.HealthBar.Thickness, 1, 0)
+                        end
                     elseif ESP.HealthBar.Style == "Dropshadow" then
-                        This.Elements.HealthBarOutline.Enabled = true
-                        This.Elements.HealthBarShadow.Visible = true
+                        if This.Elements.HealthBarOutline.Enabled ~= false then This.Elements.HealthBarOutline.Enabled = false end
+                        if This.Elements.HealthBarShadow.Visible ~= true  then This.Elements.HealthBarShadow.Visible = true end
+                    
+                        if This.Elements.HealthBarHolder.Size.Y.Offset ~= 2 then
+                            This.Elements.HealthBarHolder.Size = UDim2.new(0, ESP.HealthBar.Thickness, 1, 2)
+                        end
                     end
 
                     local Health, MaxHealth = ESP:GetHealth(This.Model)
