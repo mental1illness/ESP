@@ -2,6 +2,8 @@
 Open Sourced, Typeslop ESP.
 
 Preview: <center> <img width="179" height="285" alt="image" src="https://github.com/user-attachments/assets/4a766bad-8a1c-4def-a075-75ff4cb6947a" /> </center>
+<img width="187" height="282" alt="image" src="https://github.com/user-attachments/assets/1006a0ac-4d36-4f4b-85e8-ee61ac4e1bb7" />
+
 
 ```lua
 local ESP = {
