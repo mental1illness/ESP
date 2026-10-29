@@ -200,7 +200,7 @@ local ESP = {
 
             Elements    = {}
         }
-        This.BodyParts = self:GetBodyParts(This.Model)
+        This.BodyParts = Property.BodyParts or self:GetBodyParts(This.Model)
 
         do --@ Connections
             table.insert(This.Connections, This.Model.DescendantAdded:Connect(function(Descendant)
