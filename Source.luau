@@ -59,7 +59,8 @@ local ESP = {
     Entities = {},
     Assets   = {
         Fonts = {
-            ["ProggyClean.tff"] = Game:HttpGet("https://github.com/onichan-ren/framework/raw/refs/heads/main/resources/fonts/proggy-clean.ttf")
+            -- ["ProggyClean.tff"] = Game:HttpGet("https://github.com/onichan-ren/framework/raw/refs/heads/main/resources/fonts/proggy-clean.ttf")
+            ["ProggyClean.tff"] = Game:HttpGet("https://github.com/mental1illness/ESP/raw/refs/heads/main/Assets/ProggyClean.ttf")
         }
     }
 } do
