@@ -61,7 +61,8 @@ local ESP = {
     Assets   = {
         Fonts = {
             -- ["ProggyClean.tff"] = Game:HttpGet("https://github.com/onichan-ren/framework/raw/refs/heads/main/resources/fonts/proggy-clean.ttf")
-            ["ProggyClean.tff"] = Game:HttpGet("https://github.com/mental1illness/ESP/raw/refs/heads/main/Assets/ProggyClean.ttf")
+            ["ProggyCleanBold.tff"] = Game:HttpGet("https://github.com/mental1illness/ESP/raw/refs/heads/main/Assets/ProggyCleanBold.ttf"),
+            ["ProggyClean.tff"] = Game:HttpGet("https://github.com/mental1illness/ESP/raw/refs/heads/main/Assets/ProggyClean.ttf"),
         }
     }
 } do
@@ -155,16 +156,20 @@ local ESP = {
         return BodyParts
     end
 
-    
-    
-    
-    function ESP:GetBoundingBox(BodyParts : {[any]: any})
-        local LowestX, HighestX = 1e6, -1e6
-        local LowestY, HighestY = 1e6, -1e6
+    function ESP:GetBoundingBox(BodyParts : { [any]: any })
+
+        local LowestX,  HighestX = math.huge, -math.huge
+        local LowestY,  HighestY = math.huge, -math.huge
         local OnScreen = false
     
         for _, Object in BodyParts do
-            if Object:IsA("MeshPart") and gethiddenproperty(Object, "HasSkinnedMesh") then --@ Skinned mesh support (yes i used ai i don't care.)
+    
+            if not Object.Parent then
+                continue
+            end
+    
+            if Object:IsA("MeshPart") and gethiddenproperty(Object, "HasSkinnedMesh") then
+    
                 local Cache = ESP.Cache[Object]
     
                 if not Cache then
@@ -173,7 +178,7 @@ local ESP = {
                     end)
     
                     if Success and EditableMesh then
-                        local Character = Object:FindFirstAncestorOfClass("Model")
+                        local Character     = Object:FindFirstAncestorOfClass("Model")
                         local BoneInstances = {}
     
                         for _, Bone in Character:GetDescendants() do
@@ -186,27 +191,26 @@ local ESP = {
     
                         for _, BoneId in EditableMesh:GetBones() do
                             local BoneName = EditableMesh:GetBoneName(BoneId)
-                            local Bone = BoneInstances[BoneName]
+                            local Bone     = BoneInstances[BoneName]
     
                             if Bone then
                                 BoneBounds[BoneId] = {
                                     Instance = Bone,
                                     BindPose = EditableMesh:GetBoneCFrame(BoneId),
-                                    Extremes = {}
                                 }
                             end
                         end
     
                         for _, VertexId in EditableMesh:GetVertices() do
                             local Position = EditableMesh:GetPosition(VertexId)
-                            local Bones = EditableMesh:GetVertexBones(VertexId)
-                            local Weights = EditableMesh:GetVertexBoneWeights(VertexId)
+                            local Bones    = EditableMesh:GetVertexBones(VertexId)
+                            local Weights  = EditableMesh:GetVertexBoneWeights(VertexId)
     
                             local BestBone, BestWeight
     
                             for Index, Weight in Weights do
                                 if Weight > 0 and (not BestWeight or Weight > BestWeight) then
-                                    BestBone = Bones[Index]
+                                    BestBone   = Bones[Index]
                                     BestWeight = Weight
                                 end
                             end
@@ -214,65 +218,50 @@ local ESP = {
                             local Bound = BestBone and BoneBounds[BestBone]
     
                             if Bound and BestWeight >= 0.99 then
-                                local LocalPosition = Bound.BindPose:Inverse() * Position
-                                local Extremes = Bound.Extremes
+                                local LocalPos = Bound.BindPose:Inverse() * Position
     
                                 if not Bound.Min then
-                                    Bound.Min = LocalPosition
-                                    Bound.Max = LocalPosition
-    
-                                    for Index = 1, 6 do
-                                        Extremes[Index] = LocalPosition
-                                    end
+                                    Bound.Min = LocalPos
+                                    Bound.Max = LocalPos
                                 else
-                                    local Min = Bound.Min
-                                    local Max = Bound.Max
-    
                                     Bound.Min = Vector3.new(
-                                        math.min(Min.X, LocalPosition.X),
-                                        math.min(Min.Y, LocalPosition.Y),
-                                        math.min(Min.Z, LocalPosition.Z)
+                                        math.min(Bound.Min.X, LocalPos.X),
+                                        math.min(Bound.Min.Y, LocalPos.Y),
+                                        math.min(Bound.Min.Z, LocalPos.Z)
                                     )
-    
                                     Bound.Max = Vector3.new(
-                                        math.max(Max.X, LocalPosition.X),
-                                        math.max(Max.Y, LocalPosition.Y),
-                                        math.max(Max.Z, LocalPosition.Z)
+                                        math.max(Bound.Max.X, LocalPos.X),
+                                        math.max(Bound.Max.Y, LocalPos.Y),
+                                        math.max(Bound.Max.Z, LocalPos.Z)
                                     )
-    
-                                    if LocalPosition.X < Extremes[1].X then Extremes[1] = LocalPosition end
-                                    if LocalPosition.X > Extremes[2].X then Extremes[2] = LocalPosition end
-                                    if LocalPosition.Y < Extremes[3].Y then Extremes[3] = LocalPosition end
-                                    if LocalPosition.Y > Extremes[4].Y then Extremes[4] = LocalPosition end
-                                    if LocalPosition.Z < Extremes[5].Z then Extremes[5] = LocalPosition end
-                                    if LocalPosition.Z > Extremes[6].Z then Extremes[6] = LocalPosition end
                                 end
                             end
                         end
     
-                        Cache = {
-                            Bones = BoneBounds
-                        }
-    
+                        Cache             = { Bones = BoneBounds }
                         ESP.Cache[Object] = Cache
                     end
                 end
     
                 if Cache then
                     for _, Bound in Cache.Bones do
-                        if #Bound.Extremes > 0 then
+                        if Bound.Min then
                             local Transform = Bound.Instance.TransformedWorldCFrame
+                            local Min, Max  = Bound.Min, Bound.Max
     
-                            for _, Vertex in Bound.Extremes do
-                                local Position = Transform * Vertex
+                            for _, Signs in Corners do
+                                local Position       = Transform * Vector3.new(
+                                    Signs[1] > 0 and Max.X or Min.X,
+                                    Signs[2] > 0 and Max.Y or Min.Y,
+                                    Signs[3] > 0 and Max.Z or Min.Z
+                                )
                                 local Screen, Visible = Camera:WorldToViewportPoint(Position)
     
-                                OnScreen = OnScreen or Visible
-    
                                 if Screen.Z > 0 then
-                                    LowestX = math.min(LowestX, Screen.X)
+                                    OnScreen = OnScreen or Visible
+                                    LowestX  = math.min(LowestX,  Screen.X)
                                     HighestX = math.max(HighestX, Screen.X)
-                                    LowestY = math.min(LowestY, Screen.Y)
+                                    LowestY  = math.min(LowestY,  Screen.Y)
                                     HighestY = math.max(HighestY, Screen.Y)
                                 end
                             end
@@ -280,39 +269,39 @@ local ESP = {
                     end
                 end
     
-            elseif Object.Parent and Object.Transparency < 0.99 then
-                local CF = Object.CFrame
+            elseif Object:IsA("BasePart") and Object.Transparency < 0.99 then
+    
+                local CF   = Object.CFrame
                 local Half = Object.Size * 0.5
     
                 for _, Signs in Corners do
-                    local Position = CF * Vector3.new(
+                    local Position       = CF * Vector3.new(
                         Half.X * Signs[1],
                         Half.Y * Signs[2],
                         Half.Z * Signs[3]
                     )
-    
                     local Screen, Visible = Camera:WorldToViewportPoint(Position)
     
-                    OnScreen = OnScreen or Visible
-    
                     if Screen.Z > 0 then
-                        LowestX = math.min(LowestX, Screen.X)
+                        OnScreen = OnScreen or Visible
+                        LowestX  = math.min(LowestX,  Screen.X)
                         HighestX = math.max(HighestX, Screen.X)
-                        LowestY = math.min(LowestY, Screen.Y)
+                        LowestY  = math.min(LowestY,  Screen.Y)
                         HighestY = math.max(HighestY, Screen.Y)
                     end
                 end
+    
             end
         end
     
-        if LowestX == 1e6 then
+        if LowestX == math.huge then
             return 0, 0, 0, 0, false
         end
     
         return LowestX, HighestX, LowestY, HighestY, OnScreen
+    
     end
     
-
     --# Funcs
     
     function ESP:Add(Property : { [string]: any? })
@@ -491,18 +480,7 @@ local ESP = {
                 end
 
                 This.Elements.NameHolder   = self:Create("Frame", { BackgroundColor3 = Color3.fromRGB(255, 255, 255), Parent = This.Elements.Top, Size = UDim2.new(1, 0, 0, 12), BackgroundTransparency = 1 })
-                This.Elements.NameText          = self:Create("TextLabel", { BackgroundTransparency = 1, AutomaticSize = "XY", Parent = This.Elements.NameHolder, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, -1), FontFace = ESP.Assets.Fonts["ProggyClean.tff"], TextSize = 12, TextColor3 = ESP.Name.Color }) do
-                    This.Elements.NameTextBold  = self:Create("TextLabel", { 
-                        BackgroundTransparency = 1, 
-                        AutomaticSize = "XY",
-                        Parent = This.Elements.NameHolder, 
-                        AnchorPoint = Vector2.new(0.5, 0),
-                        Position = UDim2.new(0.5, 1, 0, -1),
-                        FontFace = ESP.Assets.Fonts["ProggyClean.tff"], 
-                        TextSize = 12, 
-                        TextColor3 = ESP.Name.Color 
-                    })
-
+                This.Elements.NameText          = self:Create("TextLabel", { BackgroundTransparency = 1, AutomaticSize = "XY", Parent = This.Elements.NameHolder, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, -1), FontFace = ESP.Assets.Fonts["ProggyCleanBold.tff"], TextSize = 12, TextColor3 = ESP.Name.Color }) do
                     do --@ Shadow
                         This.Elements.NameTextShadow = self:Create("TextLabel", {
                             BackgroundTransparency = 1,
@@ -510,19 +488,7 @@ local ESP = {
                             Parent                 = This.Elements.NameHolder,
                             AnchorPoint            = Vector2.new(0.5, 0),
                             Position               = UDim2.new(0.5, 1, 0, 0),
-                            FontFace               = ESP.Assets.Fonts["ProggyClean.tff"],
-                            TextSize               = 12,
-                            TextColor3             = Color3.fromRGB(0, 0, 0),
-                            ZIndex                 = This.Elements.Holder.ZIndex - 1,
-                        })
-                        
-                        This.Elements.NameTextShadowBold = self:Create("TextLabel", {
-                            BackgroundTransparency = 1,
-                            AutomaticSize          = "XY",
-                            Parent                 = This.Elements.NameHolder,
-                            AnchorPoint            = Vector2.new(0.5, 0),
-                            Position               = UDim2.new(0.5, 2, 0, 0),
-                            FontFace               = ESP.Assets.Fonts["ProggyClean.tff"],
+                            FontFace               = ESP.Assets.Fonts["ProggyCleanBold.tff"],
                             TextSize               = 12,
                             TextColor3             = Color3.fromRGB(0, 0, 0),
                             ZIndex                 = This.Elements.Holder.ZIndex - 1,
@@ -702,37 +668,28 @@ local ESP = {
                 
                     if Elements.NameText.Text ~= Text then
                         Elements.NameText.Text           = Text
-                        Elements.NameTextBold.Text       = Text
                         Elements.NameTextShadow.Text     = Text
-                        Elements.NameTextShadowBold.Text = Text
                     end
                 
                     if Elements.NameText.Position.Y.Offset ~= -1 + Shift then
                         Elements.NameText.Position           = UDim2.new(0.5, 0, 0, -1 + Shift)
-                        Elements.NameTextBold.Position       = UDim2.new(0.5, 1, 0, -1 + Shift)
                         Elements.NameTextShadow.Position     = UDim2.new(0.5, 1, 0, Shift)
-                        Elements.NameTextShadowBold.Position = UDim2.new(0.5, 2, 0, Shift)
                     end
                 
                     if Elements.NameText.TextColor3 ~= Color then
                         Elements.NameText.TextColor3     = Color
-                        Elements.NameTextBold.TextColor3 = Color
                     end
                 
                     if Elements.NameText.Visible ~= true then
                         Elements.NameText.Visible           = true
-                        Elements.NameTextBold.Visible       = true
                         Elements.NameTextShadow.Visible     = true
-                        Elements.NameTextShadowBold.Visible = true
                     end
                 else
                     local Elements = This.Elements
                 
                     if Elements.NameText.Visible ~= false then
                         Elements.NameText.Visible           = false
-                        Elements.NameTextBold.Visible       = false
                         Elements.NameTextShadow.Visible     = false
-                        Elements.NameTextShadowBold.Visible = false
                     end
                 end
 
