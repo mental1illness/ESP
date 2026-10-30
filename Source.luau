@@ -180,11 +180,11 @@ local ESP = {
                     if Success and EditableMesh then
                         local Character     = Object:FindFirstAncestorOfClass("Model")
                         local BoneInstances = {}
+
+                        if not Character then continue end
     
-                        for _, Bone in Character:GetDescendants() do
-                            if Bone:IsA("Bone") then
-                                BoneInstances[Bone.Name] = Bone
-                            end
+                        for _, Bone in Character:QueryDescendants("Bone") do
+                            BoneInstances[Bone.Name] = Bone
                         end
     
                         local BoneBounds = {}
