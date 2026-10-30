@@ -56,6 +56,7 @@ local ESP = {
         Thickness    = 2
     },
 
+    Cache    = {},
     Entities = {},
     Assets   = {
         Fonts = {
@@ -147,44 +148,170 @@ local ESP = {
     function ESP:GetBodyParts(Model : Model)
         local BodyParts = {}
         
-        for _, Value in Model:QueryDescendants("BasePart") do
+        for _, Value in Model:QueryDescendants("BasePart, Bone") do
             table.insert(BodyParts, Value)
         end
 
         return BodyParts
     end
 
-    function ESP:GetBoundingBox(BodyParts : {[any]: BasePart})
-        local LowestX,  HighestX = 1e6,  -1e6
-        local LowestY,  HighestY = 1e6,  -1e6
+    
+    
+    
+    function ESP:GetBoundingBox(BodyParts : {[any]: any})
+        local LowestX, HighestX = 1e6, -1e6
+        local LowestY, HighestY = 1e6, -1e6
         local OnScreen = false
     
-        for _, Part in BodyParts do
-            if Part.Parent and Part.Transparency < 0.99 then
-                local CF   = Part.CFrame
-                local Half = Part.Size * 0.5
+        for _, Object in BodyParts do
+            if Object:IsA("MeshPart") and gethiddenproperty(Object, "HasSkinnedMesh") then --@ Skinned mesh support (yes i used ai i don't care.)
+                local Cache = ESP.Cache[Object]
+    
+                if not Cache then
+                    local Success, EditableMesh = pcall(function()
+                        return game:GetService("AssetService"):CreateEditableMeshAsync(Object.MeshId)
+                    end)
+    
+                    if Success and EditableMesh then
+                        local Character = Object:FindFirstAncestorOfClass("Model")
+                        local BoneInstances = {}
+    
+                        for _, Bone in Character:GetDescendants() do
+                            if Bone:IsA("Bone") then
+                                BoneInstances[Bone.Name] = Bone
+                            end
+                        end
+    
+                        local BoneBounds = {}
+    
+                        for _, BoneId in EditableMesh:GetBones() do
+                            local BoneName = EditableMesh:GetBoneName(BoneId)
+                            local Bone = BoneInstances[BoneName]
+    
+                            if Bone then
+                                BoneBounds[BoneId] = {
+                                    Instance = Bone,
+                                    BindPose = EditableMesh:GetBoneCFrame(BoneId),
+                                    Extremes = {}
+                                }
+                            end
+                        end
+    
+                        for _, VertexId in EditableMesh:GetVertices() do
+                            local Position = EditableMesh:GetPosition(VertexId)
+                            local Bones = EditableMesh:GetVertexBones(VertexId)
+                            local Weights = EditableMesh:GetVertexBoneWeights(VertexId)
+    
+                            local BestBone, BestWeight
+    
+                            for Index, Weight in Weights do
+                                if Weight > 0 and (not BestWeight or Weight > BestWeight) then
+                                    BestBone = Bones[Index]
+                                    BestWeight = Weight
+                                end
+                            end
+    
+                            local Bound = BestBone and BoneBounds[BestBone]
+    
+                            if Bound and BestWeight >= 0.99 then
+                                local LocalPosition = Bound.BindPose:Inverse() * Position
+                                local Extremes = Bound.Extremes
+    
+                                if not Bound.Min then
+                                    Bound.Min = LocalPosition
+                                    Bound.Max = LocalPosition
+    
+                                    for Index = 1, 6 do
+                                        Extremes[Index] = LocalPosition
+                                    end
+                                else
+                                    local Min = Bound.Min
+                                    local Max = Bound.Max
+    
+                                    Bound.Min = Vector3.new(
+                                        math.min(Min.X, LocalPosition.X),
+                                        math.min(Min.Y, LocalPosition.Y),
+                                        math.min(Min.Z, LocalPosition.Z)
+                                    )
+    
+                                    Bound.Max = Vector3.new(
+                                        math.max(Max.X, LocalPosition.X),
+                                        math.max(Max.Y, LocalPosition.Y),
+                                        math.max(Max.Z, LocalPosition.Z)
+                                    )
+    
+                                    if LocalPosition.X < Extremes[1].X then Extremes[1] = LocalPosition end
+                                    if LocalPosition.X > Extremes[2].X then Extremes[2] = LocalPosition end
+                                    if LocalPosition.Y < Extremes[3].Y then Extremes[3] = LocalPosition end
+                                    if LocalPosition.Y > Extremes[4].Y then Extremes[4] = LocalPosition end
+                                    if LocalPosition.Z < Extremes[5].Z then Extremes[5] = LocalPosition end
+                                    if LocalPosition.Z > Extremes[6].Z then Extremes[6] = LocalPosition end
+                                end
+                            end
+                        end
+    
+                        Cache = {
+                            Bones = BoneBounds
+                        }
+    
+                        ESP.Cache[Object] = Cache
+                    end
+                end
+    
+                if Cache then
+                    for _, Bound in Cache.Bones do
+                        if #Bound.Extremes > 0 then
+                            local Transform = Bound.Instance.TransformedWorldCFrame
+    
+                            for _, Vertex in Bound.Extremes do
+                                local Position = Transform * Vertex
+                                local Screen, Visible = Camera:WorldToViewportPoint(Position)
+    
+                                OnScreen = OnScreen or Visible
+    
+                                if Screen.Z > 0 then
+                                    LowestX = math.min(LowestX, Screen.X)
+                                    HighestX = math.max(HighestX, Screen.X)
+                                    LowestY = math.min(LowestY, Screen.Y)
+                                    HighestY = math.max(HighestY, Screen.Y)
+                                end
+                            end
+                        end
+                    end
+                end
+    
+            elseif Object.Parent and Object.Transparency < 0.99 then
+                local CF = Object.CFrame
+                local Half = Object.Size * 0.5
     
                 for _, Signs in Corners do
-                    local Screen, Visible = Camera:WorldToViewportPoint(
-                        CF * Vector3.new(
-                            Half.X * Signs[1],
-                            Half.Y * Signs[2],
-                            Half.Z * Signs[3]
-                        )
+                    local Position = CF * Vector3.new(
+                        Half.X * Signs[1],
+                        Half.Y * Signs[2],
+                        Half.Z * Signs[3]
                     )
+    
+                    local Screen, Visible = Camera:WorldToViewportPoint(Position)
     
                     OnScreen = OnScreen or Visible
     
-                    if Screen.X < LowestX  then LowestX  = Screen.X end
-                    if Screen.X > HighestX then HighestX = Screen.X end
-                    if Screen.Y < LowestY  then LowestY  = Screen.Y end
-                    if Screen.Y > HighestY then HighestY = Screen.Y end
+                    if Screen.Z > 0 then
+                        LowestX = math.min(LowestX, Screen.X)
+                        HighestX = math.max(HighestX, Screen.X)
+                        LowestY = math.min(LowestY, Screen.Y)
+                        HighestY = math.max(HighestY, Screen.Y)
+                    end
                 end
             end
         end
     
+        if LowestX == 1e6 then
+            return 0, 0, 0, 0, false
+        end
+    
         return LowestX, HighestX, LowestY, HighestY, OnScreen
     end
+    
 
     --# Funcs
     
@@ -204,13 +331,13 @@ local ESP = {
 
         do --@ Connections
             table.insert(This.Connections, This.Model.DescendantAdded:Connect(function(Descendant)
-                if Descendant:IsA("BasePart") then
+                if Descendant:IsA("BasePart") or Descendant:IsA("Bone") then
                     table.insert(This.BodyParts, Descendant)
                 end
             end))
-            
+
             table.insert(This.Connections, This.Model.DescendantRemoving:Connect(function(Descendant)
-                if Descendant:IsA("BasePart") then
+                if Descendant:IsA("BasePart") or Descendant:IsA("Bone") then
                     local Index = table.find(This.BodyParts, Descendant)
                     if Index then
                         table.remove(This.BodyParts, Index)
@@ -637,4 +764,6 @@ do --@ Render
     end)
 end
 
-ESP:Add({ Model = Player.Character, Player = Player })
+for Index, Value in Players:GetPlayers() do
+    ESP:Add({ Model = Value.Character, Player = Value })
+end
