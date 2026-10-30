@@ -28,7 +28,7 @@ local ESP = {
         ColorTop    = Color3.fromRGB(100, 100, 100), -- yes this is gradient slop, shut up.
         ColorBottom = Color3.fromRGB(255, 255, 255),
 
-        Style       = "Dropshadow", -- You can pick "Full" or "Dropshadow".
+        Style       = "Full", -- You can pick "Full" or "Dropshadow".
 
         Filled = { -- Draws a frame inside the bounding box, filling the insides (ay bor wtf is this explanation)
             Enabled      = true,
@@ -52,7 +52,7 @@ local ESP = {
         ColorMiddle  = Color3.fromRGB(255, 255, 0),
         ColorBottom  = Color3.fromRGB(252, 71, 77),
 
-        Style        = "Dropshadow", -- You can pick "Full" or "Dropshadow".
+        Style        = "Full", -- You can pick "Full" or "Dropshadow".
         Thickness    = 2
     },
 
