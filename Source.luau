@@ -169,7 +169,7 @@ local ESP = {
     
                 if not Cache then
                     local Success, EditableMesh = pcall(function()
-                        return game:GetService("AssetService"):CreateEditableMeshAsync(Object.MeshId)
+                        return Game:GetService("AssetService"):CreateEditableMeshAsync(Object.MeshId)
                     end)
     
                     if Success and EditableMesh then
@@ -683,7 +683,7 @@ local ESP = {
                             This.Elements.HealthBarHolder.Visible = true
                         end
 
-                        local CoverSize = UDim2.new(CoverRatio, 0, 1, 0)
+                        local CoverSize = UDim2.new(1, 0, CoverRatio, 0)
                         if This.Elements.HealthBarCover.Size ~= CoverSize then
                             This.Elements.HealthBarCover.Size = CoverSize
                         end
