@@ -4,8 +4,10 @@ Open Sourced, Typeslop ESP.
 <p align="left">
   <img width="179" height="285" alt="full" src="https://github.com/user-attachments/assets/4a766bad-8a1c-4def-a075-75ff4cb6947a" />
   <img width="187" height="282" alt="dropshadow" src="https://github.com/user-attachments/assets/1006a0ac-4d36-4f4b-85e8-ee61ac4e1bb7" />
+  <img width="1047" height="939" alt="image" src="https://github.com/user-attachments/assets/95c41b72-a715-438c-a82d-f9224c347b31" />
+
   <br>
-  <span>full, dropshadow preview ^^^^^^^^^^^^</span>
+  <span>full, dropshadow, skinned mesh preview ^^^^^^^^^^^^</span>
 </p>
 
 
